@@ -1,0 +1,48 @@
+version: '2'
+
+services:
+  zoo:
+    image: elevy/zookeeper:latest
+    container_name: zoo-processor
+    hostname: zoo-processor
+    environment:
+      MYID: 1
+      SERVERS: zoo
+    ports:
+      - 2181:2181
+      - 2888:2888
+      - 3888:3888
+
+  kafka:
+    image: wurstmeister/kafka:2.13-2.7.0
+    container_name: kafka-processor
+    hostname: kafka-processor
+    depends_on:
+      - zoo
+    ports:
+      - 9092:9092
+      - 9094:9094
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka-processor:9094,OUTSIDE://localhost:9092
+      KAFKA_LISTENERS: INSIDE://:9094,OUTSIDE://:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_ZOOKEEPER_CONNECT: zoo:2181
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  akhq:
+    image: tchiotludo/akhq
+    restart: unless-stopped
+    ports:
+      - 8088:8080
+    depends_on:
+      - kafka
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "kafka-processor:9094"
