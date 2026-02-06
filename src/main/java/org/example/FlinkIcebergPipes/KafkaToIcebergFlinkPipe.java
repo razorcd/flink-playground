@@ -1,4 +1,4 @@
-package org.example.FlinkHybridSource;
+package org.example.FlinkIcebergPipes;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -12,6 +12,7 @@ import org.apache.flink.connector.base.source.hybrid.HybridSource;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -20,6 +21,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.flink.CatalogLoader;
 import org.apache.iceberg.flink.TableLoader;
+import org.apache.iceberg.flink.sink.IcebergSink;
 import org.apache.iceberg.flink.source.IcebergSource;
 import org.apache.iceberg.flink.source.StreamingStartingStrategy;
 import org.apache.iceberg.flink.source.assigner.SimpleSplitAssignerFactory;
@@ -27,7 +29,8 @@ import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.example.other.Event2;
 import org.example.serde.EventDeserializationSchemaKafka;
 
-public class KafkaIcebergFlinkHybridSource {
+public class KafkaToIcebergFlinkPipe {
+
 
     public static void main(String[] args) throws Exception {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -36,7 +39,23 @@ public class KafkaIcebergFlinkHybridSource {
         env.getCheckpointConfig().setCheckpointStorage("file:///tmp/flink-checkpoints-Union");
         env.setRestartStrategy(RestartStrategies.noRestart());
 
-      // REST Catalog properties
+
+        // Kafka
+        KafkaSource<Event2> kafkaSource = KafkaSource.<Event2>builder() //todo: identify how ensure the commited events are immediate
+                .setBootstrapServers("localhost:9092")
+                .setTopics("realtime-data-topic")
+                .setGroupId("flink-consumer-group1")
+                // .setProperty("auto.commit.interval.ms", "10")
+                .setStartingOffsets(OffsetsInitializer.committedOffsets(OffsetResetStrategy.EARLIEST))
+                .setValueOnlyDeserializer(new EventDeserializationSchemaKafka())
+                .build();
+
+        DataStreamSource<Event2> kafkaStreamSource = env.fromSource(kafkaSource, WatermarkStrategy.forMonotonousTimestamps(), "Kafka Source");
+        DataStream<Event2> kafkaStream = kafkaStreamSource.forward();
+        // kafkaStream.print();
+
+
+        // REST Catalog properties
         Map<String, String> catalogProperties = new HashMap<>();
         catalogProperties.put(CatalogProperties.CATALOG_IMPL, "org.apache.iceberg.rest.RESTCatalog");
         catalogProperties.put(CatalogProperties.URI, "http://localhost:8181");
@@ -58,54 +77,13 @@ public class KafkaIcebergFlinkHybridSource {
         
         TableLoader tableLoader = TableLoader.fromCatalog(
             catalogLoader,
-            TableIdentifier.of("default_database", "table1")
+            TableIdentifier.of("default_database", "table2")
         );
-
-
-        // IcebergSource for streaming
-        IcebergSource<Event2> icebergSource = IcebergSource.forOutputType(new Event2RawDataConvertor())
+        
+        DataStreamSink<RowData> icebergSink = IcebergSink.builderFor(kafkaStream, new Event2ToRowDataMapper(), TypeInformation.of(RowData.class))
+            // .returns(TypeInformation.of(RowData.class))
             .tableLoader(tableLoader)
-            .assignerFactory(new SimpleSplitAssignerFactory())
-            // .streaming(true)
-            // .streamingStartingStrategy(StreamingStartingStrategy.INCREMENTAL_FROM_LATEST_SNAPSHOT)
-            // .monitorInterval(Duration.ofSeconds(60)) // Poll every 60s
-            .build();
-
-        // DataStream<Event2> stream = env.fromSource(
-        //     icebergSource,
-        //     WatermarkStrategy.noWatermarks(),
-        //     "IcebergSource",
-        //     TypeInformation.of(Event2.class)
-        // );
-        // stream.print();
-
-
-        // Kafka
-        KafkaSource<Event2> kafkaSource = KafkaSource.<Event2>builder() //todo: identify how ensure the commited events are immediate
-                .setBootstrapServers("localhost:9092")
-                .setTopics("realtime-data-topic")
-                .setGroupId("flink-consumer-group1")
-                // .setProperty("auto.commit.interval.ms", "10")
-                .setStartingOffsets(OffsetsInitializer.committedOffsets(OffsetResetStrategy.EARLIEST))
-                .setValueOnlyDeserializer(new EventDeserializationSchemaKafka())
-                .build();
-
-        // DataStreamSource<Event2> kafkaStream = env.fromSource(kafkaSource, WatermarkStrategy.forMonotonousTimestamps(), "Kafka Source");
-        // kafkaStream.print();
-
-
-        // This tells Flink: "Read Iceberg completely, then switch to Kafka"
-        HybridSource<Event2> hybridSource = HybridSource.builder(icebergSource)
-            .addSource(kafkaSource)
-            .build();
-
-        DataStream<Event2> combinedStream = env.fromSource(
-            hybridSource, 
-            WatermarkStrategy.forMonotonousTimestamps(), 
-            "Unified Sales Source"
-        )
-        .returns(TypeInformation.of(Event2.class));
-        combinedStream.print(); 
+            .append();
 
         env.execute("Flink DataStream Kafka to Fluss Example");
 
