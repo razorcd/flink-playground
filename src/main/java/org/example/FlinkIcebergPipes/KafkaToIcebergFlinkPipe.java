@@ -85,7 +85,7 @@ public class KafkaToIcebergFlinkPipe {
             .tableLoader(tableLoader)
             .append();
 
-        env.execute("Flink DataStream Kafka to Fluss Example");
+        env.execute("Flink job");
 
     }
 }

@@ -107,7 +107,7 @@ public class KafkaIcebergFlinkHybridSource {
         .returns(TypeInformation.of(Event2.class));
         combinedStream.print(); 
 
-        env.execute("Flink DataStream Kafka to Fluss Example");
+        env.execute("Flink job");
 
     }
 }
