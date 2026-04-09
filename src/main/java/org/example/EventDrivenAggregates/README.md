@@ -1,4 +1,4 @@
-# Event sourced aggregates with Kafka input with Flink
+# Event sourced aggregates with Kafka input using Flink
 
 See how `JobAggregate` (the state) is built based on input events.
 
