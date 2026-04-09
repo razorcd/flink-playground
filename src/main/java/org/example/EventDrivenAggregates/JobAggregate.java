@@ -23,7 +23,7 @@ public class JobAggregate implements Serializable {
     private long assignedAt;
     private long fetchedAt;
     private long deliveredAt;
-    private List<String> eventHistory;
+    private List<String> eventHistory;  // Storing the history is optional and usually NOT recommanded as it's increasing the size of the aggregate with duplicated data.
 
     public JobAggregate() {
         this.eventHistory = new ArrayList<>();
