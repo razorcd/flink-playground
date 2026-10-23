@@ -26,7 +26,7 @@ import org.apache.flink.util.ParameterTool;
 // - a PTF only runs when a row arrives, so one start row per partition (v = NULL) opens its first window at startup
 // The PTF runs over 3 parallel instances, one per partition, each partition has its own windows, state and timers.
 // start: nc -lk 9001, then send lines "<partition>,<number>" with partition 0, 1 or 2, e.g. "1,5"
-public class StreamSet15HeartbeatWindowsPTF {
+public class FlinkSQL15HeartbeatWindowsPTF {
 
 	private static final int PARTITIONS = 3;
 
