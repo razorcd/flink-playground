@@ -9,68 +9,71 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.flink.api.common.eventtime.Watermark;
-import org.apache.flink.api.common.eventtime.WatermarkGenerator;
-import org.apache.flink.api.common.eventtime.WatermarkOutput;
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.annotation.ArgumentHint;
 import org.apache.flink.table.annotation.DataTypeHint;
 import org.apache.flink.table.annotation.StateHint;
-import org.apache.flink.table.api.DataTypes;
-import org.apache.flink.table.api.Schema;
-import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.table.api.EnvironmentSettings;
+import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.functions.ProcessTableFunction;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.ParameterTool;
 
 // Same job as StreamSet14CustomTimeGeneratorNumbers: sum the socket numbers in 30s tumbling windows, and still emit
-// windows without any socket input. Here the window is a Process Table Function (PTF) called from Flink SQL, and the
-// PTF itself fires the empty windows, no heartbeat source needed:
-// - PTF timers only support event time, so the watermark follows the wall clock even when no rows arrive
+// windows without any socket input. The whole pipeline is Flink SQL, the window is a Process Table Function (PTF),
+// and the PTF itself fires the empty windows, no heartbeat source needed:
+// - PTF timers only support event time, so the 'socket' connector (org.example.connectors.socket) emits a watermark
+//   that follows the wall clock even when no rows arrive, exposed as SOURCE_WATERMARK()
 // - every time a window closes, the PTF registers the timer of the next one
 // - a PTF only runs when a row arrives, so a single start row (v = NULL) opens the first window at startup
 // start: nc -lk 9001
 public class StreamSet15HeartbeatWindowsPTF {
 
 	public static void main(String[] args) throws Exception {
-		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment();
-		// a single parallel instance, like windowAll
-		env.setParallelism(1);
-
 		Map<String, String> config = new HashMap<>();
 		config.put("host", "localhost");
 		config.put("port", "9001");
 
 		final ParameterTool parameterTool = ParameterTool.fromMap(config).mergeWith(ParameterTool.fromArgs(args)); // args override the defaults
-		env.getConfig().setGlobalJobParameters(parameterTool);
 
+		final TableEnvironment tEnv = TableEnvironment.create(EnvironmentSettings.inStreamingMode());
 
-		TypeInformation<Row> rowType = Types.ROW_NAMED(new String[] {"v"}, Types.LONG);
+		// a single parallel instance, like windowAll (SET 'parallelism.default' = '1' in the SQL client)
+		tEnv.getConfig().set("parallelism.default", "1");
 
-		// TCP listener as input stream
-		DataStream<Row> socketStream = env.socketTextStream(parameterTool.get("host"), parameterTool.getInt("port"))
-				.map(x -> Row.of(Long.valueOf(x)))
-				.returns(rowType);
+		// TCP listener as input stream, ts = arrival time
+		tEnv.executeSql(
+				"CREATE TEMPORARY TABLE socket_numbers (\n" +
+				"  v BIGINT,\n" +
+				"  ts TIMESTAMP_LTZ(3),\n" +
+				"  WATERMARK FOR ts AS SOURCE_WATERMARK()\n" +
+				") WITH (\n" +
+				"  'connector' = 'socket',\n" +
+				"  'hostname' = '" + parameterTool.get("host") + "',\n" +
+				"  'port' = '" + parameterTool.get("port") + "'\n" +
+				")"
+		);
 
 		// one row at startup so the PTF can register its first window timer, the source finishes right after
-		DataStream<Row> startStream = env.fromData(rowType, Row.of((Object) null));
+		tEnv.executeSql(
+				"CREATE TEMPORARY TABLE start_row (\n" +
+				"  v BIGINT,\n" +
+				"  ts AS CURRENT_TIMESTAMP,\n" +
+				"  WATERMARK FOR ts AS ts\n" +
+				") WITH (\n" +
+				"  'connector' = 'datagen',\n" +
+				"  'number-of-rows' = '1',\n" +
+				"  'fields.v.null-rate' = '1.0'\n" +
+				")"
+		);
 
-		// event time = arrival time, and the watermark keeps moving with the wall clock while the socket is quiet
-		DataStream<Row> events = socketStream.union(startStream)
-				.assignTimestampsAndWatermarks(WatermarkStrategy.<Row>forGenerator(ctx -> new WallClockWatermarks<>())
-						.withTimestampAssigner((value, previousTimestamp) -> System.currentTimeMillis()));
+		tEnv.executeSql(
+				"CREATE TEMPORARY VIEW events AS\n" +
+				"SELECT v, ts FROM socket_numbers\n" +
+				"UNION ALL\n" +
+				"SELECT v, ts FROM start_row"
+		);
 
-		final StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
-		tEnv.createTemporaryView("events", tEnv.fromDataStream(events, Schema.newBuilder()
-				.columnByMetadata("ts", DataTypes.TIMESTAMP_LTZ(3), "rowtime")
-				.watermark("ts", "SOURCE_WATERMARK()")
-				.build()));
-
-		tEnv.createTemporarySystemFunction("TumblingSum", TumblingSum.class);
+		tEnv.executeSql("CREATE TEMPORARY SYSTEM FUNCTION TumblingSum AS '" + TumblingSum.class.getName() + "'");
 
 		// no PARTITION BY: the whole table goes to one PTF instance, like windowAll
 		tEnv.executeSql(
@@ -81,19 +84,6 @@ public class StreamSet15HeartbeatWindowsPTF {
 				"  uid => 'tumbling-sum'\n" +
 				")"
 		).print();
-	}
-
-
-	// emits the current wall clock as watermark on every periodic tick (pipeline.auto-watermark-interval, 200ms by default),
-	// whether rows arrived or not
-	public static class WallClockWatermarks<T> implements WatermarkGenerator<T> {
-		@Override
-		public void onEvent(T event, long eventTimestamp, WatermarkOutput output) {}
-
-		@Override
-		public void onPeriodicEmit(WatermarkOutput output) {
-			output.emitWatermark(new Watermark(System.currentTimeMillis() - 1));
-		}
 	}
 
 
