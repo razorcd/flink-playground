@@ -14,10 +14,12 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 
-// SQL connector 'socket': reads numbers, one per line, from a TCP server (e.g. nc -lk 9001).
-// The table needs exactly two physical columns: the BIGINT parsed from the line and a TIMESTAMP_LTZ(3) with the arrival time.
+// SQL connector 'socket': reads comma separated numbers, one row per line, from a TCP server (e.g. nc -lk 9001).
+// The physical columns are one or more BIGINT columns, parsed from the line in order, followed by a TIMESTAMP_LTZ(3)
+// column with the arrival time.
 //
 //   CREATE TABLE numbers (
+//     p BIGINT,                                -- line "1,5" gives p = 1, v = 5
 //     v BIGINT,
 //     ts TIMESTAMP_LTZ(3),
 //     WATERMARK FOR ts AS SOURCE_WATERMARK()   -- optional, watermark follows the wall clock even when no lines arrive
@@ -50,10 +52,11 @@ public class SocketTableFactory implements DynamicTableSourceFactory {
 
 		DataType physicalRowType = context.getPhysicalRowDataType();
 		List<LogicalType> columns = physicalRowType.getLogicalType().getChildren();
-		if (columns.size() != 2
-				|| columns.get(0).getTypeRoot() != LogicalTypeRoot.BIGINT
-				|| columns.get(1).getTypeRoot() != LogicalTypeRoot.TIMESTAMP_WITH_LOCAL_TIME_ZONE) {
-			throw new ValidationException("The 'socket' connector needs exactly the physical columns (BIGINT, TIMESTAMP_LTZ(3)), got " + physicalRowType);
+		boolean valid = columns.size() >= 2
+				&& columns.get(columns.size() - 1).getTypeRoot() == LogicalTypeRoot.TIMESTAMP_WITH_LOCAL_TIME_ZONE
+				&& columns.subList(0, columns.size() - 1).stream().allMatch(column -> column.getTypeRoot() == LogicalTypeRoot.BIGINT);
+		if (!valid) {
+			throw new ValidationException("The 'socket' connector needs the physical columns (BIGINT, ..., TIMESTAMP_LTZ(3)), got " + physicalRowType);
 		}
 
 		return new SocketTableSource(options.get(HOSTNAME), options.get(PORT), physicalRowType);

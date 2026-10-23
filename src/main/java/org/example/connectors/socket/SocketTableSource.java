@@ -49,19 +49,21 @@ public class SocketTableSource implements ScanTableSource, SupportsSourceWaterma
 		final int port = this.port;
 		final boolean sourceWatermark = this.sourceWatermark;
 		final InternalTypeInfo<RowData> rowTypeInfo = InternalTypeInfo.of((RowType) physicalRowType.getLogicalType());
+		// all columns but the last one come from the line, the last one is the arrival time
+		final int valueCount = rowTypeInfo.toRowSize() - 1;
 
 		return new DataStreamScanProvider() {
 			@Override
 			public DataStream<RowData> produceDataStream(ProviderContext providerContext, StreamExecutionEnvironment env) {
 				DataStream<RowData> rows = env.socketTextStream(hostname, port)
-						.map(line -> (RowData) GenericRowData.of(Long.valueOf(line.trim()), TimestampData.fromEpochMillis(System.currentTimeMillis())))
+						.map(line -> parseLine(line, valueCount))
 						.returns(rowTypeInfo);
 				if (!sourceWatermark) {
 					return rows;
 				}
 				// event time = arrival time (the ts column), the watermark keeps moving with the wall clock while the socket is quiet
 				return rows.assignTimestampsAndWatermarks(WatermarkStrategy.<RowData>forGenerator(ctx -> new WallClockWatermarks())
-						.withTimestampAssigner((row, previousTimestamp) -> row.getTimestamp(1, 3).getMillisecond()));
+						.withTimestampAssigner((row, previousTimestamp) -> row.getTimestamp(valueCount, 3).getMillisecond()));
 			}
 
 			@Override
@@ -69,6 +71,19 @@ public class SocketTableSource implements ScanTableSource, SupportsSourceWaterma
 				return false;
 			}
 		};
+	}
+
+	private static RowData parseLine(String line, int valueCount) {
+		String[] values = line.split(",");
+		if (values.length != valueCount) {
+			throw new IllegalArgumentException("Expected " + valueCount + " comma separated numbers, got: " + line);
+		}
+		GenericRowData row = new GenericRowData(valueCount + 1);
+		for (int i = 0; i < valueCount; i++) {
+			row.setField(i, Long.valueOf(values[i].trim()));
+		}
+		row.setField(valueCount, TimestampData.fromEpochMillis(System.currentTimeMillis()));
+		return row;
 	}
 
 	@Override
