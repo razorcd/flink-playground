@@ -1,7 +1,6 @@
 package org.example;
 
-import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.util.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -30,7 +29,6 @@ public class StreamSet7Kafka {
 
 		// Set up Flink configuration to expose the Web UI
 		Configuration flinkConfig = new Configuration();
-		flinkConfig.setBoolean(ConfigConstants.LOCAL_START_WEBSERVER, true);
 
 		// Use LocalStreamEnvironment to enable the Flink Web UI
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(flinkConfig);

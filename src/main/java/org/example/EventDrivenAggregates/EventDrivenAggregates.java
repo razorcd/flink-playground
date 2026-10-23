@@ -1,6 +1,7 @@
 package org.example.EventDrivenAggregates;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.configuration.Configuration;
@@ -50,7 +51,7 @@ public class EventDrivenAggregates {
         // // Build aggregates by jobId using keyed state
         // DataStream<JobAggregate> aggregates = events
         //         .keyBy(JobEvent::getJobId)
-        //         .window(TumblingEventTimeWindows.of(Time.seconds(30)))
+        //         .window(TumblingEventTimeWindows.of(Duration.ofSeconds(30)))
         //         .aggregate(new JobAggregateFunction());
 
         // Build aggregates by jobId using keyed state (no windowing)
@@ -87,7 +88,7 @@ public class EventDrivenAggregates {
         private transient ValueState<JobAggregate> aggregateState;
 
         @Override
-        public void open(Configuration parameters) throws Exception {
+        public void open(OpenContext openContext) throws Exception {
             ValueStateDescriptor<JobAggregate> descriptor = 
                 new ValueStateDescriptor<>("job-aggregate", JobAggregate.class);
             aggregateState = getRuntimeContext().getState(descriptor);

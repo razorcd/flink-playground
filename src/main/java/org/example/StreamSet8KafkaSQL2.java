@@ -4,8 +4,7 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.util.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
@@ -16,8 +15,6 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTime
 import org.apache.flink.table.api.*;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.operations.TableSourceQueryOperation;
-import org.apache.flink.table.sources.TableSource;
-import org.apache.flink.streaming.api.windowing.time.Time;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -40,7 +37,6 @@ public class StreamSet8KafkaSQL2 {
 
 		// Set up Flink configuration to expose the Web UI
 		Configuration flinkConfig = new Configuration();
-		flinkConfig.setBoolean(ConfigConstants.LOCAL_START_WEBSERVER, true);
 
 		// Use LocalStreamEnvironment to enable the Flink Web UI
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(flinkConfig);
@@ -92,7 +88,7 @@ public class StreamSet8KafkaSQL2 {
 
         Table resultTable = tEnv.sqlQuery(selectSqlWindowed);
 
-//        resultTable.window(Timer.of(Time.of(5, TimeUnit.SECONDS)))
+//        resultTable.window(Timer.of(Duration.ofSeconds(5)))
 
         resultTable.execute().print();
 

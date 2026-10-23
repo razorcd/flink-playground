@@ -1,7 +1,6 @@
 package org.example;
 
-import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.util.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.Table;
@@ -21,8 +20,7 @@ public class StreamSet8IcebergSQL {
 
 		// Set up Flink configuration to expose the Web UI
 //		Configuration flinkConfig = new Configuration();
-//		flinkConfig.setBoolean(ConfigConstants.LOCAL_START_WEBSERVER, true);
-		// Use LocalStreamEnvironment to enable the Flink Web UI
+//		// Use LocalStreamEnvironment to enable the Flink Web UI
 //		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(flinkConfig);
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 //            final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment();
@@ -100,7 +98,7 @@ public class StreamSet8IcebergSQL {
 
         Table resultTable = tEnv.sqlQuery(selectSqlWindowed);
 //
-////        resultTable.window(Timer.of(Time.of(5, TimeUnit.SECONDS)))
+////        resultTable.window(Timer.of(Duration.ofSeconds(5)))
 //
         resultTable.execute().print();
 

@@ -1,5 +1,6 @@
 package org.example;
 
+import org.apache.flink.api.common.functions.OpenContext;
 import org.apache.flink.api.common.functions.IterationRuntimeContext;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.functions.RichReduceFunction;
@@ -8,21 +9,19 @@ import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
-import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.util.ParameterTool;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.evictors.DeltaEvictor;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.triggers.Trigger;
 import org.apache.flink.streaming.api.windowing.triggers.TriggerResult;
 import org.apache.flink.streaming.api.windowing.windows.GlobalWindow;
 import org.apache.flink.util.Collector;
 
+import java.time.Duration;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -45,7 +44,6 @@ public class StreamSet5State {
 
 		// Set up Flink configuration to expose the Web UI
 		Configuration flinkConfig = new Configuration();
-		flinkConfig.setBoolean(ConfigConstants.LOCAL_START_WEBSERVER, true);
 //		flinkConfig.setString("rest.port", "8081"); // Default Flink UI port
 //		flinkConfig.setString("rest.address", "localhost"); // Optional: bind to localhost
 
@@ -102,7 +100,7 @@ public class StreamSet5State {
 					}
 
 					@Override
-					public void open(Configuration parameters) throws Exception {
+					public void open(OpenContext openContext) throws Exception {
 						ListStateDescriptor<Integer> descriptor = new ListStateDescriptor<>("elements", Integer.class);
 						elements = getRuntimeContext().getListState(descriptor);
 

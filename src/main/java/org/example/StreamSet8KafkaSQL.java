@@ -4,8 +4,7 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.util.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
@@ -31,7 +30,6 @@ public class StreamSet8KafkaSQL {
 
 		// Set up Flink configuration to expose the Web UI
 		Configuration flinkConfig = new Configuration();
-		flinkConfig.setBoolean(ConfigConstants.LOCAL_START_WEBSERVER, true);
 
 		// Use LocalStreamEnvironment to enable the Flink Web UI
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(flinkConfig);

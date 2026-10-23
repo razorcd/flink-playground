@@ -1,21 +1,19 @@
 package org.example;
 
-import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.util.ParameterTool;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows;
 import org.apache.flink.streaming.api.windowing.evictors.CountEvictor;
 import org.apache.flink.streaming.api.windowing.evictors.DeltaEvictor;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.triggers.CountTrigger;
 import org.apache.flink.streaming.api.windowing.triggers.Trigger;
 import org.apache.flink.streaming.api.windowing.triggers.TriggerResult;
 import org.apache.flink.streaming.api.windowing.windows.GlobalWindow;
 import org.apache.flink.util.OutputTag;
 
+import java.time.Duration;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -38,13 +36,11 @@ public class StreamSet4Windowing {
 
 		// Set up Flink configuration to expose the Web UI
 		Configuration flinkConfig = new Configuration();
-		flinkConfig.setBoolean(ConfigConstants.LOCAL_START_WEBSERVER, true);
 //		flinkConfig.setString("rest.port", "8081"); // Default Flink UI port
 //		flinkConfig.setString("rest.address", "localhost"); // Optional: bind to localhost
 
 		// Use LocalStreamEnvironment to enable the Flink Web UI
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(flinkConfig);
-		env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 		final ParameterTool parameterTool = ParameterTool.fromArgs(args).mergeWith(ParameterTool.fromMap(config));
 		env.getConfig().setGlobalJobParameters(parameterTool);
 
@@ -53,10 +49,10 @@ public class StreamSet4Windowing {
 
 //		stream window
 		socketStream
-//				.windowAll(TumblingProcessingTimeWindows.of(Time.of(5, TimeUnit.SECONDS)))
-//				.windowAll(ProcessingTimeSessionWindows.withGap(Time.seconds(5)))
+//				.windowAll(TumblingProcessingTimeWindows.of(Duration.ofSeconds(5)))
+//				.windowAll(ProcessingTimeSessionWindows.withGap(Duration.ofSeconds(5)))
 				.windowAll(GlobalWindows.create())
-//				.allowedLateness(Time.seconds(5))
+//				.allowedLateness(Duration.ofSeconds(5))
 				.trigger(new CustomElementTrigger()) // triggered when element "0" is received
 //				.evictor(CountEvictor.of(3))
 				.evictor(DeltaEvictor.of(10, (String a, String b) -> Math.abs(Integer.parseInt(a) - Integer.parseInt(b)))) // evicts elements that differ by more than 10
@@ -71,7 +67,7 @@ public class StreamSet4Windowing {
 //				.map(line -> Integer.parseInt(line))
 //				.setParallelism(5)
 //				.keyBy(line -> line % 5)
-//				.window(TumblingProcessingTimeWindows.of(Time.of(5, TimeUnit.SECONDS)))
+//				.window(TumblingProcessingTimeWindows.of(Duration.ofSeconds(5)))
 ////				.sum(0)
 //				.reduce((acc, x) -> acc + x)
 ////				.maxBy("variable2")

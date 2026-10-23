@@ -130,9 +130,8 @@ public class StreamSet11IcebergRead {
                     .streamingStartingStrategy(StreamingStartingStrategy.INCREMENTAL_FROM_EARLIEST_SNAPSHOT)
                     .startSnapshotId(3821550127947080000L)
                     .monitorInterval(Duration.ofSeconds(5)) // Checks Nessie for new commits every 10 seconds
-                    .project(org.apache.flink.table.api.TableSchema.builder()
-                            .field("event_id", DataTypes.STRING())
-                            .build())
+                    .project(org.apache.flink.table.catalog.ResolvedSchema.of(
+                            org.apache.flink.table.catalog.Column.physical("event_id", DataTypes.STRING())))
                     .build();
 
             DataStream<String> icebergStream = env.fromSource(
@@ -273,8 +272,7 @@ public class StreamSet11IcebergRead {
 //
 //		// Set up Flink configuration to expose the Web UI
 //		Configuration flinkConfig = new Configuration();
-//		flinkConfig.setBoolean(ConfigConstants.LOCAL_START_WEBSERVER, true);
-//
+////
 //		// Use LocalStreamEnvironment to enable the Flink Web UI
 //		final StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(flinkConfig);
 //		final ParameterTool parameterTool = ParameterTool.fromArgs(args).mergeWith(ParameterTool.fromMap(config));

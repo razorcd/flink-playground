@@ -6,7 +6,9 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.CheckpointingOptions;
+import org.apache.flink.configuration.RestartStrategyOptions;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.connector.base.source.hybrid.HybridSource;
 import org.apache.flink.connector.kafka.source.KafkaSource;
@@ -36,8 +38,11 @@ public class KafkaToIcebergFlinkPipe {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.enableCheckpointing(1000);
         env.setParallelism(1);
-        env.getCheckpointConfig().setCheckpointStorage("file:///tmp/flink-checkpoints-Union");
-        env.setRestartStrategy(RestartStrategies.noRestart());
+        Configuration jobConfig = new Configuration();
+        jobConfig.set(CheckpointingOptions.CHECKPOINT_STORAGE, "filesystem");
+        jobConfig.set(CheckpointingOptions.CHECKPOINTS_DIRECTORY, "file:///tmp/flink-checkpoints-Union");
+        jobConfig.set(RestartStrategyOptions.RESTART_STRATEGY, "none");
+        env.configure(jobConfig);
 
 
         // Kafka

@@ -1,5 +1,5 @@
 package org.example.other;
-import org.apache.flink.streaming.api.functions.source.SourceFunction;
+import org.apache.flink.streaming.api.functions.source.legacy.SourceFunction;
 
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
