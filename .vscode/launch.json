@@ -3,6 +3,27 @@
     "configurations": [
         {
             "type": "java",
+            "name": "StreamSet14CustomTimeGeneratorNumbers",
+            "request": "launch",
+            "mainClass": "org.example.StreamSet14CustomTimeGeneratorNumbers",
+            "projectName": "FlinkExamples"
+        },
+        {
+            "type": "java",
+            "name": "StreamSet10CustomTimeGeneratorNumbers",
+            "request": "launch",
+            "mainClass": "org.example.StreamSet10CustomTimeGeneratorNumbers",
+            "projectName": "FlinkExamples"
+        },
+        {
+            "type": "java",
+            "name": "StreamSet4Windowing",
+            "request": "launch",
+            "mainClass": "org.example.StreamSet4Windowing",
+            "projectName": "FlinkExamples"
+        },
+        {
+            "type": "java",
             "name": "InsertIcebergRow",
             "request": "launch",
             "mainClass": "org.example.FlinkHybridSource.InsertIcebergRow",

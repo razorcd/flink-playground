@@ -7,7 +7,7 @@ Start Kafka dependency: `podman-compose up --build -f docker-compose-kafka.yml -
 Create `test1` topic: `kafka-topics.sh -bootstrap-server localhost:9092 --create --topic test1` 
 Produce to topic: `kafka-console-producer --bootstrap-server localhost:9092  --topic test1`
 
-Start Flink-Iceberg dependency: `podman-compose up --build -f docker-compose-minio-nessie.yml -d`
+Start Flink-Iceberg dependency: `podman-compose --build -f docker-compose-minio-nessie.yml -d up`
 
 ### See the class you want to run if a different dependency setup is needed.
 

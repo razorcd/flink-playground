@@ -17,7 +17,7 @@ public class CustomTimerGeneratorSource implements SourceFunction<Long> {
         while (isRunning) {
             synchronized (ctx.getCheckpointLock()) {
                 ctx.collect(counter);
-                System.out.println("Emitted: " + counter + " at " + Instant.ofEpochMilli(System.currentTimeMillis()).toString());
+                System.out.println("CustomTimerGeneratorSource emitted: " + counter + " at " + Instant.ofEpochMilli(System.currentTimeMillis()).toString());
                 counter++;
             }
             Thread.sleep(INTERVAL_MS);
