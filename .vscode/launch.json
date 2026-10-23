@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "StreamSet15HeartbeatWindowsPTF",
+            "request": "launch",
+            "mainClass": "org.example.StreamSet15HeartbeatWindowsPTF",
+            "projectName": "FlinkExamples"
+        },
+        {
+            "type": "java",
             "name": "StreamSet14CustomTimeGeneratorNumbers",
             "request": "launch",
             "mainClass": "org.example.StreamSet14CustomTimeGeneratorNumbers",
