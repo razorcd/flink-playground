@@ -188,6 +188,29 @@
 	</dependencies>
     <build>
         <plugins>
+            <!-- `mvn package` also builds target/FlinkExamples-1.0-SNAPSHOT-udf.jar with only the SQL functions in
+                 org.example.udf, to load them in Flink SQL with CREATE FUNCTION ... USING JAR. Flink itself is not
+                 bundled, the cluster provides it -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <executions>
+                    <execution>
+                        <id>udf-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>udf</classifier>
+                            <includes>
+                                <include>org/example/udf/**</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
